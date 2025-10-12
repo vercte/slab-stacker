@@ -1,0 +1,15 @@
+{
+  "required": true,
+  "package": "net.vercte.slabstack.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "minVersion": "0.8",
+  "client": [
+  ],
+  "mixins": [
+    "BlockItemMixin",
+    "SlabBlockMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

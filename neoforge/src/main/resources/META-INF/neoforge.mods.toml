@@ -1,0 +1,32 @@
+modLoader = "javafml"
+loaderVersion = "[2,)"
+#issueTrackerURL = ""
+license = "MIT"
+
+[[mods]]
+modId = "slabstack"
+version = "${version}"
+displayName = "SlabStack"
+authors = "Vercte"
+description = '''
+
+'''
+#logoFile = ""
+
+[[dependencies.slabstack]]
+modId = "neoforge"
+type = "required"
+versionRange = "[21,)"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies.slabstack]]
+modId = "minecraft"
+type = "required"
+versionRange = "[1.21.1,)"
+ordering = "NONE"
+side = "BOTH"
+
+
+[[mixins]]
+config = "slabstack.mixins.json"

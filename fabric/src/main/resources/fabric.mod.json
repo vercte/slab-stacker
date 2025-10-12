@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "id": "slabstack",
+  "version": "${version}",
+  "name": "SlabStack",
+  "description": "",
+  "authors": [
+    "Vercte"
+  ],
+  "contact": {
+    "homepage": ""
+  },
+  "license": "MIT",
+  "icon": "assets/slabstack/icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "net.vercte.slabstack.fabric.SlabStackFabric"
+    ],
+    "client": [
+      "net.vercte.slabstack.fabric.client.SlabStackFabricClient"
+    ]
+  },
+  "mixins": [
+    "slabstack.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=0.17.3",
+    "minecraft": "~1.21.1",
+    "java": ">=21",
+    "fabric-api": "*"
+  },
+  "suggests": {
+    "another-mod": "*"
+  }
+}
