@@ -17,6 +17,7 @@ import net.minecraft.world.level.block.SlabBlock;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.SlabType;
 import net.minecraft.world.level.gameevent.GameEvent;
 import net.vercte.slabstack.ModBlocks;
 import net.vercte.slabstack.stack.StackedSlabBlockEntity;
@@ -50,45 +51,53 @@ public abstract class BlockItemMixin {
     protected abstract SoundEvent getPlaceSound(BlockState blockState);
 
     @Inject(method = "place", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/item/BlockItem;updatePlacementContext(Lnet/minecraft/world/item/context/BlockPlaceContext;)Lnet/minecraft/world/item/context/BlockPlaceContext;"), cancellable = true)
-    public void stackSlabsIfPossible(BlockPlaceContext blockPlaceContext, CallbackInfoReturnable<InteractionResult> cir, @Local(argsOnly = true) BlockPlaceContext blockPlaceContext2) {
+    public void stackSlabsIfPossible(BlockPlaceContext blockPlaceContext, CallbackInfoReturnable<InteractionResult> cir, @Local(argsOnly = true) BlockPlaceContext blockPlaceContextRefresh) {
         BlockPos targetBlockPos = blockPlaceContext.getClickedPos();
         BlockState originalBlockState = blockPlaceContext.getLevel().getBlockState(targetBlockPos);
-        BlockState resultingBlockState = this.getPlacementState(blockPlaceContext2);
+        BlockState resultingBlockState = this.getPlacementState(blockPlaceContextRefresh);
+        BlockState stackedSlabBlockState = ModBlocks.STACKED_SLAB.get().defaultBlockState();
 
         ItemStack heldItem = blockPlaceContext.getItemInHand();
         Item item = heldItem.getItem();
 
+        if(!(originalBlockState.getBlock() instanceof SlabBlock)) return;
+
+        if(resultingBlockState == null) return;
+        if(originalBlockState.is(resultingBlockState.getBlock())) return;
+
         if(item instanceof BlockItem blockItem && blockItem.getBlock() instanceof SlabBlock) {
-            if (resultingBlockState == null) {
-                cir.setReturnValue(InteractionResult.FAIL);
-            } else if (!this.placeBlock(blockPlaceContext2, resultingBlockState)) {
+            if (!this.placeBlock(blockPlaceContextRefresh, stackedSlabBlockState)) {
                 cir.setReturnValue(InteractionResult.FAIL);
             } else {
-                BlockPos blockPos = blockPlaceContext2.getClickedPos();
-                Level level = blockPlaceContext2.getLevel();
-                Player player = blockPlaceContext2.getPlayer();
-                ItemStack itemStack = blockPlaceContext2.getItemInHand();
-                BlockState blockState2 = level.getBlockState(blockPos);
-                if (blockState2.is(resultingBlockState.getBlock())) {
-                    blockState2 = this.updateBlockStateFromTag(blockPos, level, itemStack, blockState2);
+                BlockPos blockPos = blockPlaceContextRefresh.getClickedPos();
+                Level level = blockPlaceContextRefresh.getLevel();
+                Player player = blockPlaceContextRefresh.getPlayer();
+                ItemStack itemStack = blockPlaceContextRefresh.getItemInHand();
+                BlockState finallyPlacedBlockState = level.getBlockState(blockPos);
+                if (finallyPlacedBlockState.is(resultingBlockState.getBlock())) {
+                    finallyPlacedBlockState = this.updateBlockStateFromTag(blockPos, level, itemStack, finallyPlacedBlockState);
                     updateCustomBlockEntityTag(level, player, blockPos, itemStack);
                     updateBlockEntityComponents(level, blockPos, itemStack);
-                    blockState2.getBlock().setPlacedBy(level, blockPos, blockState2, player, itemStack);
+                    finallyPlacedBlockState.getBlock().setPlacedBy(level, blockPos, finallyPlacedBlockState, player, itemStack);
                     if (player instanceof ServerPlayer) {
                         CriteriaTriggers.PLACED_BLOCK.trigger((ServerPlayer)player, blockPos, itemStack);
                     }
                 }
 
-                SoundType soundType = blockState2.getSoundType();
-                if(blockState2.is(ModBlocks.STACKED_SLAB.get())) {
+                SoundType soundType = finallyPlacedBlockState.getSoundType();
+                if(finallyPlacedBlockState.is(ModBlocks.STACKED_SLAB.get())) {
                     BlockEntity be = level.getBlockEntity(blockPos);
                     if(be instanceof StackedSlabBlockEntity ssbe) {
-                        ssbe.setMaterials(originalBlockState, );
+                        if(originalBlockState.getValue(SlabBlock.TYPE) == SlabType.TOP) {
+                            ssbe.setMaterials(originalBlockState, resultingBlockState);
+                        } else {
+                            ssbe.setMaterials(resultingBlockState, originalBlockState);
+                        }
                     }
                 }
 
-                level.playSound(player, blockPos, this.getPlaceSound(blockState2), SoundSource.BLOCKS, (soundType.getVolume() + 1.0F) / 2.0F, soundType.getPitch() * 0.8F);
-                level.gameEvent(GameEvent.BLOCK_PLACE, blockPos, GameEvent.Context.of(player, blockState2));
+                level.playSound(player, blockPos, this.getPlaceSound(finallyPlacedBlockState), SoundSource.BLOCKS, (soundType.getVolume() + 1.0F) / 2.0F, soundType.getPitch() * 0.8F);
+                level.gameEvent(GameEvent.BLOCK_PLACE, blockPos, GameEvent.Context.of(player, finallyPlacedBlockState));
                 itemStack.consume(1, player);
                 cir.setReturnValue(InteractionResult.sidedSuccess(level.isClientSide));
             }
