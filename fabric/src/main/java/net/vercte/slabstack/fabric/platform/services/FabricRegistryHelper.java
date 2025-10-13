@@ -7,8 +7,6 @@ import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.vercte.slabstack.SlabStack;
 import net.vercte.slabstack.platform.services.IRegistryHelper;
 
-import java.util.Arrays;
-import java.util.function.IntFunction;
 import java.util.function.Supplier;
 
 

@@ -1,10 +1,13 @@
 package net.vercte.slabstack.fabric.client;
 
 import net.fabricmc.api.ClientModInitializer;
+import net.fabricmc.fabric.api.client.model.loading.v1.ModelLoadingPlugin;
 
 public final class SlabStackFabricClient implements ClientModInitializer {
+    public static final SlabStackAfterBake AFTER_BAKE = new SlabStackAfterBake();
+
     @Override
     public void onInitializeClient() {
-        // This entrypoint is suitable for setting up client-specific logic, such as rendering.
+        ModelLoadingPlugin.register(ctx -> ctx.modifyModelAfterBake().register(AFTER_BAKE));
     }
 }

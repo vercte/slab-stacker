@@ -1,70 +1,71 @@
 package net.vercte.slabstack.stack;
 
 import com.mojang.logging.LogUtils;
+import it.unimi.dsi.fastutil.Pair;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Holder;
-import net.minecraft.core.Vec3i;
-import net.minecraft.server.level.ServerLevel;
+import net.minecraft.core.HolderLookup;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtUtils;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.gameevent.BlockPositionSource;
-import net.minecraft.world.level.gameevent.GameEvent;
-import net.minecraft.world.level.gameevent.GameEventListener;
-import net.minecraft.world.level.gameevent.PositionSource;
-import net.minecraft.world.phys.Vec3;
 import net.vercte.slabstack.ModBlockEntities;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
-public class StackedSlabBlockEntity extends BlockEntity implements GameEventListener.Provider<StackedSlabBlockEntity.StackedSlabListener> {
-    private BlockState topMaterial;
-    private BlockState bottomMaterial;
-
-    private StackedSlabListener listener;
+public class StackedSlabBlockEntity extends BlockEntity {
+    @Nullable private BlockState topMaterial;
+    @Nullable private BlockState bottomMaterial;
 
     public StackedSlabBlockEntity(BlockPos blockPos, BlockState blockState) {
         super(ModBlockEntities.STACKED_SLAB.get(), blockPos, blockState);
-        listener = new StackedSlabListener(blockState, new BlockPositionSource(blockPos));
     }
 
-    public void setMaterials(BlockState top, BlockState bottom) {
+    public void setMaterials(@NotNull BlockState top, @NotNull BlockState bottom) {
         this.topMaterial = top;
         this.bottomMaterial = bottom;
+
+        Level level = getLevel();
+        if(level == null || level.isClientSide()) return;
+
+        BlockState newState = getBlockState().setValue(StackedSlabBlock.LIGHT, getLight(top, bottom));
+        level.setBlock(getBlockPos(), newState, 11);
     }
 
-    public StackedSlabListener getListener() {
-        return listener;
+    public Pair<@Nullable BlockState, @Nullable BlockState> getMaterials() {
+        return Pair.of(topMaterial, bottomMaterial);
     }
 
-    public static class StackedSlabListener implements GameEventListener {
-        BlockState blockState;
-        PositionSource positionSource;
+    public static int getLight(BlockState top, BlockState bottom) {
+        int light = 0;
+        if(top != null) light = top.getLightEmission();
+        if(bottom != null) light = Math.max(bottom.getLightEmission(), light);
 
-        public StackedSlabListener(BlockState blockState, PositionSource positionSource) {
-            this.blockState = blockState;
-            this.positionSource = positionSource;
-        }
+        return light;
+    }
 
-        @Override
-        public @NotNull PositionSource getListenerSource() {
-            return positionSource;
-        }
+    @Override
+    protected void loadAdditional(CompoundTag compoundTag, HolderLookup.Provider provider) {
+        BlockState top = null;
+        BlockState bottom = null;
 
-        @Override
-        public int getListenerRadius() {
-            return 1;
-        }
+        if(compoundTag.contains("TopMaterial", CompoundTag.TAG_COMPOUND))
+            top = NbtUtils.readBlockState(provider.lookupOrThrow(Registries.BLOCK), compoundTag.getCompound("TopMaterial"));
 
-        @Override
-        public boolean handleGameEvent(ServerLevel serverLevel, Holder<GameEvent> holder, GameEvent.Context context, Vec3 vec3) {
-            if(holder.is(GameEvent.BLOCK_PLACE.key())) {
-                LogUtils.getLogger().info("{}, {}", context.affectedState(), new BlockPos((int)vec3.x, (int)vec3.y, (int)vec3.z));
-            }
-            return false;
-        }
+        if(compoundTag.contains("BottomMaterial", CompoundTag.TAG_COMPOUND))
+            bottom = NbtUtils.readBlockState(provider.lookupOrThrow(Registries.BLOCK), compoundTag.getCompound("BottomMaterial"));
 
-        @Override
-        public @NotNull DeliveryMode getDeliveryMode() {
-            return DeliveryMode.UNSPECIFIED;
-        }
+        if(top != null && bottom != null) setMaterials(top, bottom);
+        LogUtils.getLogger().info("top {}, bottom {}", topMaterial, bottomMaterial);
+
+        super.loadAdditional(compoundTag, provider);
+    }
+
+    @Override
+    protected void saveAdditional(CompoundTag compoundTag, HolderLookup.Provider provider) {
+        if(topMaterial != null) compoundTag.put("TopMaterial", NbtUtils.writeBlockState(topMaterial));
+        if(bottomMaterial != null) compoundTag.put("BottomMaterial", NbtUtils.writeBlockState(bottomMaterial));
+        super.saveAdditional(compoundTag, provider);
     }
 }

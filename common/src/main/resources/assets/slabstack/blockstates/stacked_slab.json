@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "": {
+      "model": "slabstack:block/stacked_slab"
+    }
+  }
+}

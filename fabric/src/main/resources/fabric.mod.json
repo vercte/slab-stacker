@@ -22,7 +22,8 @@
     ]
   },
   "mixins": [
-    "slabstack.mixins.json"
+    "slabstack.mixins.json",
+    "slabstack-fabric.mixins.json"
   ],
   "depends": {
     "fabricloader": ">=0.17.3",

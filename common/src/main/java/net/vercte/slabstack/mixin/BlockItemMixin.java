@@ -20,6 +20,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.SlabType;
 import net.minecraft.world.level.gameevent.GameEvent;
 import net.vercte.slabstack.ModBlocks;
+import net.vercte.slabstack.stack.StackedSlabBlock;
 import net.vercte.slabstack.stack.StackedSlabBlockEntity;
 import org.jetbrains.annotations.Nullable;
 import org.spongepowered.asm.mixin.Mixin;
@@ -27,8 +28,6 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
-
-// maybe ill fix this later... this seems Shit Ass
 
 @Mixin(BlockItem.class)
 public abstract class BlockItemMixin {
@@ -55,7 +54,6 @@ public abstract class BlockItemMixin {
         BlockPos targetBlockPos = blockPlaceContext.getClickedPos();
         BlockState originalBlockState = blockPlaceContext.getLevel().getBlockState(targetBlockPos);
         BlockState resultingBlockState = this.getPlacementState(blockPlaceContextRefresh);
-        BlockState stackedSlabBlockState = ModBlocks.STACKED_SLAB.get().defaultBlockState();
 
         ItemStack heldItem = blockPlaceContext.getItemInHand();
         Item item = heldItem.getItem();
@@ -64,6 +62,9 @@ public abstract class BlockItemMixin {
 
         if(resultingBlockState == null) return;
         if(originalBlockState.is(resultingBlockState.getBlock())) return;
+
+        int light = StackedSlabBlockEntity.getLight(originalBlockState, resultingBlockState);
+        BlockState stackedSlabBlockState = ModBlocks.STACKED_SLAB.get().defaultBlockState().setValue(StackedSlabBlock.LIGHT, light);
 
         if(item instanceof BlockItem blockItem && blockItem.getBlock() instanceof SlabBlock) {
             if (!this.placeBlock(blockPlaceContextRefresh, stackedSlabBlockState)) {
@@ -96,7 +97,7 @@ public abstract class BlockItemMixin {
                     }
                 }
 
-                level.playSound(player, blockPos, this.getPlaceSound(finallyPlacedBlockState), SoundSource.BLOCKS, (soundType.getVolume() + 1.0F) / 2.0F, soundType.getPitch() * 0.8F);
+                level.playSound(player, blockPos, this.getPlaceSound(resultingBlockState), SoundSource.BLOCKS, (soundType.getVolume() + 1.0F) / 2.0F, soundType.getPitch() * 0.8F);
                 level.gameEvent(GameEvent.BLOCK_PLACE, blockPos, GameEvent.Context.of(player, finallyPlacedBlockState));
                 itemStack.consume(1, player);
                 cir.setReturnValue(InteractionResult.sidedSuccess(level.isClientSide));

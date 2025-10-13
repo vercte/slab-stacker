@@ -8,6 +8,7 @@ public final class SlabStack {
     public static void init() {
         ModBlocks.init();
         ModBlockEntities.init();
+        ModItems.init();
     }
 
     public static ResourceLocation at(String location) {
