@@ -8,14 +8,11 @@ import org.jetbrains.annotations.Nullable;
 public class SlabStackAfterBake implements AfterBake {
     @Override
     public @Nullable BakedModel modifyModelAfterBake(@Nullable BakedModel model, Context context) {
-        if(isStackedSlab(context)) {
-            return new StackedSlabBakedModelFabric();
-        }
+        if(isStackedSlab(context)) return new StackedSlabBakedModelFabric();
         return model;
     }
 
     private boolean isStackedSlab(Context context) {
-        if(context.topLevelId() != null && context.topLevelId().id().getPath().equals("stacked_slab")) return true;
-        else return context.resourceId() != null && context.resourceId().getPath().equals("block/stacked_slab");
+        return context.resourceId() != null && context.resourceId().getPath().equals("block/stacked_slab");
     }
 }

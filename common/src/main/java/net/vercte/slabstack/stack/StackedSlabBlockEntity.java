@@ -3,11 +3,14 @@ package net.vercte.slabstack.stack;
 import com.mojang.logging.LogUtils;
 import it.unimi.dsi.fastutil.Pair;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.HolderGetter;
 import net.minecraft.core.HolderLookup;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtUtils;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.vercte.slabstack.ModBlockEntities;
@@ -47,25 +50,26 @@ public class StackedSlabBlockEntity extends BlockEntity {
 
     @Override
     protected void loadAdditional(CompoundTag compoundTag, HolderLookup.Provider provider) {
+        super.loadAdditional(compoundTag, provider);
+
         BlockState top = null;
         BlockState bottom = null;
 
+        HolderGetter<Block> holderGetter = this.level != null ? this.level.holderLookup(Registries.BLOCK) : BuiltInRegistries.BLOCK.asLookup();
         if(compoundTag.contains("TopMaterial", CompoundTag.TAG_COMPOUND))
-            top = NbtUtils.readBlockState(provider.lookupOrThrow(Registries.BLOCK), compoundTag.getCompound("TopMaterial"));
+            top = NbtUtils.readBlockState(holderGetter, compoundTag.getCompound("TopMaterial"));
 
         if(compoundTag.contains("BottomMaterial", CompoundTag.TAG_COMPOUND))
-            bottom = NbtUtils.readBlockState(provider.lookupOrThrow(Registries.BLOCK), compoundTag.getCompound("BottomMaterial"));
+            bottom = NbtUtils.readBlockState(holderGetter, compoundTag.getCompound("BottomMaterial"));
 
+        LogUtils.getLogger().info("loading top {}, bottom {}", top, bottom);
         if(top != null && bottom != null) setMaterials(top, bottom);
-        LogUtils.getLogger().info("top {}, bottom {}", topMaterial, bottomMaterial);
-
-        super.loadAdditional(compoundTag, provider);
     }
 
     @Override
     protected void saveAdditional(CompoundTag compoundTag, HolderLookup.Provider provider) {
-        if(topMaterial != null) compoundTag.put("TopMaterial", NbtUtils.writeBlockState(topMaterial));
-        if(bottomMaterial != null) compoundTag.put("BottomMaterial", NbtUtils.writeBlockState(bottomMaterial));
         super.saveAdditional(compoundTag, provider);
+        if(topMaterial != null) compoundTag.put("TopMaterial", NbtUtils.writeBlockState(this.topMaterial));
+        if(bottomMaterial != null) compoundTag.put("BottomMaterial", NbtUtils.writeBlockState(this.bottomMaterial));
     }
 }

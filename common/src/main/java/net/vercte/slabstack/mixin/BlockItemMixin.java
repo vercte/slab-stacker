@@ -90,9 +90,9 @@ public abstract class BlockItemMixin {
                     BlockEntity be = level.getBlockEntity(blockPos);
                     if(be instanceof StackedSlabBlockEntity ssbe) {
                         if(originalBlockState.getValue(SlabBlock.TYPE) == SlabType.TOP) {
-                            ssbe.setMaterials(originalBlockState, resultingBlockState);
+                            ssbe.setMaterials(originalBlockState, resultingBlockState.setValue(SlabBlock.TYPE, SlabType.BOTTOM));
                         } else {
-                            ssbe.setMaterials(resultingBlockState, originalBlockState);
+                            ssbe.setMaterials(resultingBlockState.setValue(SlabBlock.TYPE, SlabType.TOP), originalBlockState);
                         }
                     }
                 }

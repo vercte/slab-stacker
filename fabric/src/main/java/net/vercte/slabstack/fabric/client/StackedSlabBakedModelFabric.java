@@ -1,12 +1,9 @@
 package net.vercte.slabstack.fabric.client;
 
-import com.mojang.logging.LogUtils;
+import io.github.fabricators_of_create.porting_lib.models.CustomParticleIconModel;
 import it.unimi.dsi.fastutil.Pair;
-import net.fabricmc.fabric.api.renderer.v1.RendererAccess;
-import net.fabricmc.fabric.api.renderer.v1.material.RenderMaterial;
 import net.fabricmc.fabric.api.renderer.v1.render.RenderContext;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.block.BlockRenderDispatcher;
 import net.minecraft.client.renderer.block.model.BakedQuad;
 import net.minecraft.client.renderer.block.model.ItemOverrides;
 import net.minecraft.client.renderer.block.model.ItemTransforms;
@@ -24,7 +21,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.function.Supplier;
 
-public class StackedSlabBakedModelFabric implements BakedModel {
+public class StackedSlabBakedModelFabric implements BakedModel, CustomParticleIconModel {
     BakedModel topModel = null;
     BakedModel bottomModel = null;
 
@@ -48,26 +45,30 @@ public class StackedSlabBakedModelFabric implements BakedModel {
     @Override
     public void emitBlockQuads(BlockAndTintGetter blockView, BlockState state, BlockPos pos, Supplier<RandomSource> randomSupplier, RenderContext context) {
         Object data = blockView.getBlockEntityRenderData(pos);
-        if(!(data instanceof Pair)) return;
-        @SuppressWarnings("unchecked")
-        Pair<@Nullable BlockState, @Nullable BlockState> pair = (Pair<@Nullable BlockState, @Nullable BlockState>)data;
+
+        Pair<@Nullable BlockState, @Nullable BlockState> pair = dataToPair(data);
 
         BlockState top = pair.left();
         BlockState bottom = pair.right();
         if(top == null || bottom == null) return;
 
-        BlockRenderDispatcher brd = Minecraft.getInstance().getBlockRenderer();
-        this.topModel = brd.getBlockModel(top);
-        this.bottomModel = brd.getBlockModel(bottom);
+        this.topModel = getBlockModel(top);
+        this.bottomModel = getBlockModel(bottom);
 
-        for(Direction direction : Direction.values()) {
-            List<BakedQuad> quads = getQuads(state, direction, randomSupplier.get());
-            for(BakedQuad quad : quads) {
-                context.getEmitter().fromVanilla(quad, RendererAccess.INSTANCE.getRenderer().materialById(RenderMaterial.MATERIAL_STANDARD), null);
-                context.getEmitter().emit();
-            }
-        }
-        LogUtils.getLogger().info("top {}, bottom {}", top, bottom);
+        this.topModel.emitBlockQuads(blockView, state, pos, randomSupplier, context);
+        this.bottomModel.emitBlockQuads(blockView, state, pos, randomSupplier, context);
+    }
+
+    @SuppressWarnings("unchecked")
+    private @Nullable Pair<@Nullable BlockState, @Nullable BlockState> dataToPair(Object data) {
+        if(!(data instanceof Pair)) return null;
+        return (Pair<@Nullable BlockState, @Nullable BlockState>) data;
+    }
+
+    private BakedModel getBlockModel(BlockState state) {
+        return Minecraft.getInstance()
+                .getBlockRenderer()
+                .getBlockModel(state);
     }
 
     @Override
@@ -95,8 +96,16 @@ public class StackedSlabBakedModelFabric implements BakedModel {
 
     @Override
     public @NotNull TextureAtlasSprite getParticleIcon() {
-
         return topModel.getParticleIcon();
+    }
+
+    @Override
+    public @NotNull TextureAtlasSprite getParticleIcon(Object data) {
+        Pair<@Nullable BlockState, @Nullable BlockState> pair = dataToPair(data);
+        if(pair == null) return this.getParticleIcon();
+
+        BakedModel top = getBlockModel(pair.first());
+        return top.getParticleIcon();
     }
 
     @Override
