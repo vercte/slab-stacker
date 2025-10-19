@@ -1,6 +1,5 @@
 package net.vercte.slabstack.stack;
 
-import com.mojang.logging.LogUtils;
 import it.unimi.dsi.fastutil.Pair;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderGetter;
@@ -96,5 +95,13 @@ public class StackedSlabBlockEntity extends BlockEntity {
     @Override
     public ClientboundBlockEntityDataPacket getUpdatePacket() {
         return ClientboundBlockEntityDataPacket.create(this);
+    }
+
+    @Override
+    public @NotNull CompoundTag getUpdateTag(HolderLookup.Provider provider) {
+        CompoundTag tag = super.getUpdateTag(provider);
+        if(topMaterial != null) tag.put("TopMaterial", NbtUtils.writeBlockState(this.topMaterial));
+        if(bottomMaterial != null) tag.put("BottomMaterial", NbtUtils.writeBlockState(this.bottomMaterial));
+        return tag;
     }
 }
