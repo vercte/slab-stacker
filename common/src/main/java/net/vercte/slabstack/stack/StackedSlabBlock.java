@@ -4,9 +4,12 @@ import it.unimi.dsi.fastutil.Pair;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.BlockGetter;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.EntityBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.entity.BlockEntityTicker;
+import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.IntegerProperty;
@@ -31,6 +34,14 @@ public class StackedSlabBlock extends Block implements EntityBlock {
         return new StackedSlabBlockEntity(blockPos, blockState);
     }
 
+    @Override
+    public @Nullable <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level level, BlockState blockState, BlockEntityType<T> blockEntityType) {
+        return (l, p, s, be) -> {
+            if(be instanceof StackedSlabBlockEntity ss && ss.isDirty()) {
+                ss.updateMaterials();
+            }
+        };
+    }
 
     public Pair<@Nullable BlockState, @Nullable BlockState> getMaterial(BlockGetter getter, BlockPos pos) {
         if(getter.getBlockEntity(pos) instanceof StackedSlabBlockEntity be) return be.getMaterials();

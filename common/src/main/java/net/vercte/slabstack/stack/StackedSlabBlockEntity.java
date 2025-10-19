@@ -9,7 +9,8 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtUtils;
-import net.minecraft.world.level.Level;
+import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
@@ -18,6 +19,8 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 public class StackedSlabBlockEntity extends BlockEntity {
+    private boolean dirtyMaterial = false;
+
     @Nullable private BlockState topMaterial;
     @Nullable private BlockState bottomMaterial;
 
@@ -28,12 +31,21 @@ public class StackedSlabBlockEntity extends BlockEntity {
     public void setMaterials(@NotNull BlockState top, @NotNull BlockState bottom) {
         this.topMaterial = top;
         this.bottomMaterial = bottom;
+        this.dirtyMaterial = true;
+    }
 
-        Level level = getLevel();
-        if(level == null || level.isClientSide()) return;
+    public void updateMaterials() {
+        if(level == null) return;
 
-        BlockState newState = getBlockState().setValue(StackedSlabBlock.LIGHT, getLight(top, bottom));
-        level.setBlock(getBlockPos(), newState, 11);
+        BlockState oldState = getBlockState();
+        BlockState newState = getBlockState().setValue(StackedSlabBlock.LIGHT, getLight(this.topMaterial, this.bottomMaterial));
+
+        if(!level.isClientSide()) level.setBlock(getBlockPos(), newState, 11);
+        level.sendBlockUpdated(getBlockPos(), oldState, newState, 0);
+
+        this.setChanged();
+        this.sendData();
+        this.dirtyMaterial = false;
     }
 
     public Pair<@Nullable BlockState, @Nullable BlockState> getMaterials() {
@@ -62,7 +74,6 @@ public class StackedSlabBlockEntity extends BlockEntity {
         if(compoundTag.contains("BottomMaterial", CompoundTag.TAG_COMPOUND))
             bottom = NbtUtils.readBlockState(holderGetter, compoundTag.getCompound("BottomMaterial"));
 
-        LogUtils.getLogger().info("loading top {}, bottom {}", top, bottom);
         if(top != null && bottom != null) setMaterials(top, bottom);
     }
 
@@ -71,5 +82,19 @@ public class StackedSlabBlockEntity extends BlockEntity {
         super.saveAdditional(compoundTag, provider);
         if(topMaterial != null) compoundTag.put("TopMaterial", NbtUtils.writeBlockState(this.topMaterial));
         if(bottomMaterial != null) compoundTag.put("BottomMaterial", NbtUtils.writeBlockState(this.bottomMaterial));
+    }
+
+    boolean isDirty() {
+        return this.dirtyMaterial;
+    }
+
+    public void sendData() {
+        if (level instanceof ServerLevel serverLevel)
+            serverLevel.getChunkSource().blockChanged(getBlockPos());
+    }
+
+    @Override
+    public ClientboundBlockEntityDataPacket getUpdatePacket() {
+        return ClientboundBlockEntityDataPacket.create(this);
     }
 }

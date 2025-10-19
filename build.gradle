@@ -25,6 +25,17 @@ subprojects {
 
     repositories {
         maven { url = "https://mvn.devos.one/snapshots/" }
+        exclusiveContent {
+            forRepository {
+                maven {
+                    name = "Modrinth"
+                    url = "https://api.modrinth.com/maven"
+                }
+            }
+            filter {
+                includeGroup "maven.modrinth"
+            }
+        }
     }
 
     dependencies {

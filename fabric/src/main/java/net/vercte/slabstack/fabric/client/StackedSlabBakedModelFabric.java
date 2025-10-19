@@ -47,6 +47,7 @@ public class StackedSlabBakedModelFabric implements BakedModel, CustomParticleIc
         Object data = blockView.getBlockEntityRenderData(pos);
 
         Pair<@Nullable BlockState, @Nullable BlockState> pair = dataToPair(data);
+        if(pair == null) return;
 
         BlockState top = pair.left();
         BlockState bottom = pair.right();
