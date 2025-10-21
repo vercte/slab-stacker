@@ -13,6 +13,9 @@ import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.IntegerProperty;
+import net.minecraft.world.phys.shapes.Shapes;
+import net.minecraft.world.phys.shapes.VoxelShape;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 public class StackedSlabBlock extends Block implements EntityBlock {
@@ -48,7 +51,26 @@ public class StackedSlabBlock extends Block implements EntityBlock {
         return Pair.of(null, null);
     }
 
+    // TODO: NOT WORKIGN!!!
+    @Override
+    @SuppressWarnings("DataFlowIssue")
+    protected @NotNull VoxelShape getOcclusionShape(BlockState blockState, BlockGetter blockGetter, BlockPos blockPos) {
+        Pair<@Nullable BlockState, @Nullable BlockState> materials = this.getMaterial(blockGetter, blockPos);
+        if(materials.left() == null || materials.right() == null) return Shapes.block();
 
+        VoxelShape topMaterial = materials.left().getOcclusionShape(blockGetter, blockPos);
+        VoxelShape bottomMaterial = materials.right().getOcclusionShape(blockGetter, blockPos);
+
+        return Shapes.or(topMaterial, bottomMaterial);
+    }
+
+    @SuppressWarnings("DataFlowIssue")
+    public boolean propagatesSkylightDown(BlockState state, BlockGetter blockGetter, BlockPos blockPos) {
+        Pair<@Nullable BlockState, @Nullable BlockState> materials = this.getMaterial(blockGetter, blockPos);
+        if(materials.left() == null || materials.right() == null) return false;
+
+        return materials.left().propagatesSkylightDown(blockGetter, blockPos) || materials.right().propagatesSkylightDown(blockGetter, blockPos);
+    }
 
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) { builder.add(LIGHT); }

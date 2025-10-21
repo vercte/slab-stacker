@@ -2,8 +2,15 @@ package net.vercte.slabstack.fabric.client;
 
 import io.github.fabricators_of_create.porting_lib.models.CustomParticleIconModel;
 import it.unimi.dsi.fastutil.Pair;
+import net.fabricmc.fabric.api.renderer.v1.RendererAccess;
+import net.fabricmc.fabric.api.renderer.v1.material.BlendMode;
+import net.fabricmc.fabric.api.renderer.v1.material.MaterialFinder;
+import net.fabricmc.fabric.api.renderer.v1.material.RenderMaterial;
+import net.fabricmc.fabric.api.renderer.v1.mesh.MutableQuadView;
 import net.fabricmc.fabric.api.renderer.v1.render.RenderContext;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.ItemBlockRenderTypes;
+import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.block.model.BakedQuad;
 import net.minecraft.client.renderer.block.model.ItemOverrides;
 import net.minecraft.client.renderer.block.model.ItemTransforms;
@@ -19,6 +26,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.Supplier;
 
 public class StackedSlabBakedModelFabric implements BakedModel, CustomParticleIconModel {
@@ -26,7 +34,7 @@ public class StackedSlabBakedModelFabric implements BakedModel, CustomParticleIc
     BakedModel bottomModel = null;
 
     @Override
-    public @NotNull List<BakedQuad> getQuads(@Nullable BlockState blockState, @Nullable Direction direction, RandomSource randomSource) {
+    public @NotNull List<BakedQuad> getQuads(@Nullable BlockState blockState, @Nullable Direction direction, @NotNull RandomSource randomSource) {
         if(topModel == null || bottomModel == null) return List.of();
 
         List<BakedQuad> topQuads = topModel.getQuads(blockState, direction, randomSource);
@@ -47,17 +55,30 @@ public class StackedSlabBakedModelFabric implements BakedModel, CustomParticleIc
         Object data = blockView.getBlockEntityRenderData(pos);
 
         Pair<@Nullable BlockState, @Nullable BlockState> pair = dataToPair(data);
-        if(pair == null) return;
+        if(pair == null) {
+            BakedModel.super.emitBlockQuads(blockView, state, pos, randomSupplier, context);
+            return;
+        }
 
         BlockState top = pair.left();
         BlockState bottom = pair.right();
-        if(top == null || bottom == null) return;
+        if(top == null || bottom == null) {
+            BakedModel.super.emitBlockQuads(blockView, state, pos, randomSupplier, context);
+            return;
+        }
 
         this.topModel = getBlockModel(top);
-        this.bottomModel = getBlockModel(bottom);
+        this.emitBlockQuadsInner(blockView, pos, randomSupplier, context, top, this.topModel);
 
-        this.topModel.emitBlockQuads(blockView, state, pos, randomSupplier, context);
-        this.bottomModel.emitBlockQuads(blockView, state, pos, randomSupplier, context);
+        this.bottomModel = getBlockModel(bottom);
+        this.emitBlockQuadsInner(blockView, pos, randomSupplier, context, bottom, this.bottomModel);
+    }
+
+    private void emitBlockQuadsInner(BlockAndTintGetter blockView, BlockPos pos, Supplier<RandomSource> randomSupplier, RenderContext context,
+                                     BlockState innerState, BakedModel innerModel) {
+        context.pushTransform(MaterialFixer.create(innerState));
+        innerModel.emitBlockQuads(blockView, innerState, pos, randomSupplier, context);
+        context.popTransform();
     }
 
     @SuppressWarnings("unchecked")
@@ -74,8 +95,7 @@ public class StackedSlabBakedModelFabric implements BakedModel, CustomParticleIc
 
     @Override
     public boolean useAmbientOcclusion() {
-        if(topModel == null) return false;
-        return topModel.useAmbientOcclusion() || bottomModel.useAmbientOcclusion();
+        return false;
     }
 
     @Override
@@ -92,7 +112,7 @@ public class StackedSlabBakedModelFabric implements BakedModel, CustomParticleIc
 
     @Override
     public boolean isCustomRenderer() {
-        return true; // TODO: ?
+        return true;
     }
 
     @Override
@@ -105,7 +125,7 @@ public class StackedSlabBakedModelFabric implements BakedModel, CustomParticleIc
         Pair<@Nullable BlockState, @Nullable BlockState> pair = dataToPair(data);
         if(pair == null) return this.getParticleIcon();
 
-        BakedModel top = getBlockModel(pair.first());
+        BakedModel top = getBlockModel(pair.left());
         return top.getParticleIcon();
     }
 
@@ -117,5 +137,24 @@ public class StackedSlabBakedModelFabric implements BakedModel, CustomParticleIc
     @Override
     public @NotNull ItemOverrides getOverrides() {
         return topModel.getOverrides();
+    }
+
+    // thanks Create Fabric
+    private record MaterialFixer(RenderMaterial material) implements RenderContext.QuadTransform {
+        @Override
+        public boolean transform(MutableQuadView quad) {
+            if (quad.material().blendMode() == BlendMode.DEFAULT) {
+                quad.material(material);
+            }
+            return true;
+        }
+
+        public static MaterialFixer create(BlockState materialState) {
+            RenderType type = ItemBlockRenderTypes.getChunkRenderType(materialState);
+            BlendMode blendMode = BlendMode.fromRenderLayer(type);
+            MaterialFinder finder = Objects.requireNonNull(RendererAccess.INSTANCE.getRenderer()).materialFinder();
+
+            return new MaterialFixer(finder.blendMode(blendMode).find());
+        }
     }
 }
